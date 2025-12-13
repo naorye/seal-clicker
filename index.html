@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seal Clicker</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="main-layout">
+        <!-- Game Area -->
+        <div id="game-container">
+            <!-- Collection Area (Top-Left) -->
+            <div id="ascended-container"></div>
+
+            <!-- Main Click Area -->
+            <div id="click-target-container">
+                <img id="click-target" src="seal.png" alt="Click Me!" draggable="false">
+            </div>
+
+            <!-- Counter -->
+            <div id="counter-container">
+                <div id="counter-label">$</div>
+                <div id="counter-value">0</div>
+                <button id="draw-toggle-btn" title="Magic Draw Mode">✎</button>
+            </div>
+
+            <!-- Drawing Canvas -->
+            <canvas id="draw-canvas"></canvas>
+        </div>
+
+        <!-- Shop Sidebar -->
+        <div id="shop-container">
+            <h2>Shop</h2>
+            <div id="shop-items-container">
+                <!-- Items injected via JS -->
+            </div>
+        </div>
+    </div>
+    <script src="main.js"></script>
+</body>
+
+</html>
