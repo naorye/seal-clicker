@@ -11,7 +11,8 @@ html {
     user-select: none;
 }
 
-#draw-toggle-btn {
+#draw-toggle-btn,
+#mute-btn {
     background: #FFD700;
     border: 2px solid #FFA500;
     border-radius: 50%;
@@ -149,17 +150,23 @@ html {
 
 #ascended-container {
     position: absolute;
-    top: 20px;
-    left: 20px;
+    top: 10px;
+    left: 10px;
     display: flex;
-    gap: 10px;
+    gap: 5px;
     z-index: 10;
+    flex-wrap: wrap;
+    /* Allow wrapping */
+    max-width: calc(100% - 20px);
+    /* Full width minus padding */
+    pointer-events: none;
+    /* Let clicks pass through container gaps */
 }
 
 .ascended-wrapper {
-    width: 60px;
-    height: 60px;
-    /* Wrapper handles entrance animation */
+    width: 40px;
+    height: 40px;
+    /* Smaller icons to fit more */
 }
 
 .ascended-icon {
@@ -225,6 +232,13 @@ html {
     gap: 10px;
     z-index: 2002;
     /* Ensure above canvas */
+}
+
+#currency-icon {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
 }
 
 /* Animations */
@@ -307,10 +321,6 @@ html {
         /* Shop takes ~33% height */
         border-left: none;
         border-top: 2px solid #16364a;
-        flex-direction: row;
-        /* Horizontal layout for shop header/items? */
-        /* Actually vertical is better for scrolling a list, but maybe we want horizontal connection? 
-           Let's stick to Vertical list but full width. */
         display: flex;
         flex-direction: column;
         padding: 10px;
@@ -318,7 +328,6 @@ html {
 
     #shop-items-container {
         display: flex;
-        /* Horizontal scroll? */
         flex-direction: row;
         overflow-x: auto;
         overflow-y: hidden;
@@ -337,33 +346,787 @@ html {
     .shop-item {
         min-width: 140px;
         margin-bottom: 0;
-        /* Clear bottom margin */
         display: flex;
         flex-direction: column;
         justify-content: center;
-        height: 100px;
+        height: auto;
+        padding: 10px;
+        white-space: normal;
     }
 
     /* Adjust game elements */
     #click-target {
-        width: 150px;
-        height: 150px;
+        width: 120px;
+        height: 120px;
     }
 
-    /* Move ascended icons a bit smaller */
+    /* Move ascended icons smaller for mobile */
     .ascended-wrapper {
-        width: 40px;
-        height: 40px;
+        width: 30px;
+        height: 30px;
+    }
+
+    #ascended-container {
+        top: 5px;
+        left: 5px;
+        gap: 3px;
+        max-width: calc(100% - 10px);
     }
 
     #counter-container {
-        font-size: 1.5rem;
+        font-size: 1.2rem;
         bottom: 10px;
         left: 10px;
+        padding: 5px 10px;
+    }
+
+    #currency-icon {
+        width: 25px;
+        height: 25px;
     }
 
     #draw-toggle-btn {
+        width: 30px;
+        height: 30px;
+    }
+
+    #flip-world-btn {
         width: 35px;
         height: 35px;
+    }
+}
+
+/* --- Runner & World Flip Styles --- */
+
+/* Flip World Button */
+#flip-world-btn {
+    width: 50px;
+    /* Slightly larger */
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    /* No bg for portal */
+    cursor: pointer;
+    /* box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); Remove shadow as icon has it? */
+    transition: all 0.2s;
+    margin-left: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2001;
+    /* Match draw btn */
+    pointer-events: auto;
+    padding: 0;
+}
+
+#flip-world-btn img {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 5px #9370DB);
+    /* Glow */
+}
+
+#flip-world-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+}
+
+#flip-world-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 3D Flip Container Logic */
+body {
+    perspective: 1500px;
+    /* Enable 3D space */
+}
+
+#main-layout {
+    transition: transform 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transform-style: preserve-3d;
+    position: relative;
+    /* Ensure background is on the element being flipped if needed, but body has bg */
+}
+
+/* When flipped, rotate the layout */
+body.flipped #main-layout {
+    transform: rotateY(180deg);
+}
+
+/* Game Container Wrapper */
+#game-container,
+#shop-container {
+    backface-visibility: hidden;
+    /* Hide when flipped */
+    /* Ensure z-index is correct so they don't bleed through? */
+    background-color: #87CEEB;
+    /* Ensure opaque background */
+}
+
+/* Runner Container - The "Back" of the card */
+#runner-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #222;
+    /* Darker theme for runner */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    transform: rotateY(180deg);
+    /* Start rotated on the back */
+    backface-visibility: hidden;
+    /* Only visible when flipped */
+    z-index: 5000;
+    /* Ensure on top when flipped */
+}
+
+/* Ensure hidden class is managed */
+#runner-container.hidden {
+    /* We rely on backface-visibility mostly, but we can pointer-events none it */
+    pointer-events: none;
+}
+
+#runner-container:not(.hidden) {
+    pointer-events: auto;
+}
+
+/* Runner Canvas */
+#runner-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Runner UI Overlay */
+#runner-ui {
+    position: absolute;
+    top: 80px;
+    /* Moved down to make room for collection */
+    left: 20px;
+    z-index: 5010;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#runner-collection-container {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    gap: 5px;
+    z-index: 5020;
+    flex-wrap: wrap;
+    max-width: calc(100% - 20px);
+    pointer-events: none;
+}
+
+#runner-collection-container .ascended-wrapper {
+    /* Reuse wrapper styles */
+    width: 40px;
+    height: 40px;
+}
+
+#runner-score {
+    color: white;
+    font-family: 'Fredoka One', cursive;
+    font-size: 2rem;
+    text-shadow: 2px 2px 0 black;
+}
+
+#runner-money {
+    color: #FFD700;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.5rem;
+    text-shadow: 2px 2px 0 black;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 5px 15px;
+    border-radius: 10px;
+}
+
+#return-btn,
+#runner-shop-btn {
+    padding: 10px 20px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.2rem;
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #cc0000;
+    transition: all 0.1s;
+}
+
+#runner-shop-btn {
+    background: #4CAF50;
+    box-shadow: 0 4px 0 #2E7D32;
+}
+
+#return-btn:active,
+#runner-shop-btn:active {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+/* Mobile Runner Styles */
+@media (max-width: 768px) {
+    #runner-ui {
+        top: 10px;
+        left: 10px;
+        gap: 5px;
+    }
+
+    #runner-score {
+        font-size: 1.2rem;
+    }
+
+    #runner-money {
+        font-size: 1.1rem;
+    }
+
+    #return-btn,
+    #runner-shop-btn {
+        padding: 8px 15px;
+        font-size: 1rem;
+    }
+
+    /* Better shop layout for mobile */
+    #shop-container {
+        min-height: 150px;
+        max-height: 200px;
+    }
+
+    .shop-item {
+        min-width: 120px;
+        padding: 8px;
+    }
+
+    .shop-btn {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+    }
+
+    .shop-price {
+        font-size: 0.7rem;
+        margin-top: 5px;
+    }
+
+    .shop-stats {
+        font-size: 0.6rem !important;
+    }
+}
+
+/* --- Skins System Styles --- */
+
+#skins-btn {
+    padding: 10px 20px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.2rem;
+    background: #9370DB;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #6a4ba3;
+    transition: all 0.1s;
+    margin-top: 10px;
+}
+
+#skins-btn:hover {
+    background: #8160c7;
+}
+
+#skins-btn:active {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+/* Skins Modal */
+#skins-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+#skins-modal.hidden {
+    display: none;
+}
+
+#skins-modal-content {
+    background: #1e4d6b;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+#skins-modal-content h2 {
+    color: white;
+    font-family: 'Fredoka One', cursive;
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 2rem;
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+#skins-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.skin-card {
+    background: rgba(255, 255, 255, 0.1);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 15px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.skin-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.skin-card.selected {
+    border-color: #FFD700;
+    background: rgba(255, 215, 0, 0.2);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+.skin-card.locked {
+    opacity: 0.6;
+    cursor: not-allowed;
+    position: relative;
+}
+
+.skin-card.locked::before {
+    content: '🔒';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    z-index: 10;
+}
+
+.skin-card canvas {
+    width: 60px;
+    height: 60px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+}
+
+.skin-name {
+    color: white;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.skin-status {
+    color: #FFD700;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+.skin-cost {
+    color: #00ff00;
+    font-size: 0.9rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+.skin-select-btn,
+.skin-unlock-btn {
+    padding: 8px 15px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.8rem;
+    background: #00e676;
+    color: #003300;
+    border: 2px solid #00c853;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+.skin-select-btn:hover,
+.skin-unlock-btn:hover {
+    background: #00c853;
+    transform: scale(1.05);
+}
+
+.skin-unlock-btn:disabled {
+    background: #555;
+    color: #999;
+    border-color: #444;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#close-skins-btn {
+    padding: 12px 30px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #cc0000;
+    transition: all 0.1s;
+    width: 100%;
+}
+
+#close-skins-btn:hover {
+    background: #ff2222;
+}
+
+#close-skins-btn:active {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+/* Mobile Skins Styles */
+@media (max-width: 768px) {
+    #skins-modal-content {
+        padding: 20px;
+        width: 95%;
+    }
+
+    #skins-modal-content h2 {
+        font-size: 1.5rem;
+    }
+
+    #skins-grid {
+        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+        gap: 10px;
+    }
+
+    .skin-card {
+        padding: 10px;
+    }
+
+    .skin-card canvas {
+        width: 50px;
+        height: 50px;
+    }
+
+    .skin-name {
+        font-size: 0.75rem;
+    }
+
+    #skins-btn {
+        padding: 8px 15px;
+        font-size: 1rem;
+    }
+}
+
+/* --- Runner Shop Styles --- */
+
+#runner-shop-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+#runner-shop-modal.hidden {
+    display: none;
+}
+
+#runner-shop-modal-content {
+    background: #1e4d6b;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+#runner-shop-modal-content h2 {
+    color: white;
+    font-family: 'Fredoka One', cursive;
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 2rem;
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+#runner-shop-items {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.runner-shop-item {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.runner-shop-item-name {
+    color: white;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.3rem;
+    text-align: center;
+}
+
+.runner-shop-item-desc {
+    color: #ccc;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.runner-shop-item-stats {
+    color: #FFD700;
+    font-size: 0.95rem;
+    text-align: center;
+    font-weight: bold;
+}
+
+.runner-shop-item-cost {
+    color: #00ff00;
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+.runner-shop-buy-btn {
+    padding: 12px 20px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    background: #00e676;
+    color: #003300;
+    border: 2px solid #00c853;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.runner-shop-buy-btn:hover {
+    background: #00c853;
+    transform: scale(1.05);
+}
+
+.runner-shop-buy-btn:disabled {
+    background: #555;
+    color: #999;
+    border-color: #444;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#close-runner-shop-btn {
+    padding: 12px 30px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #cc0000;
+    transition: all 0.1s;
+    width: 100%;
+}
+
+#close-runner-shop-btn:hover {
+    background: #ff2222;
+}
+
+#close-runner-shop-btn:active {
+    transform: translateY(4px);
+    box-shadow: none;
+}
+
+/* Mobile Runner Shop Styles */
+@media (max-width: 768px) {
+    #runner-shop-modal-content {
+        padding: 20px;
+        width: 95%;
+    }
+
+    #runner-shop-modal-content h2 {
+        font-size: 1.5rem;
+    }
+
+    .runner-shop-item {
+        padding: 15px;
+    }
+
+    .runner-shop-item-name {
+        font-size: 1.1rem;
+    }
+
+    .runner-shop-item-desc {
+        font-size: 0.8rem;
+    }
+
+    .runner-shop-item-stats {
+        font-size: 0.85rem;
+    }
+
+    .runner-shop-item-cost {
+        font-size: 0.95rem;
+    }
+
+    .runner-shop-buy-btn {
+        padding: 10px 15px;
+        font-size: 0.9rem;
+    }
+}
+
+/* --- Mobile Landscape Optimization (Phone on Side) --- */
+@media (max-width: 900px) and (orientation: landscape) {
+    #main-layout {
+        flex-direction: row;
+        /* Keep side-by-side */
+    }
+
+    #game-container {
+        flex: 3;
+        /* More space for game */
+    }
+
+    #shop-container {
+        width: 180px;
+        /* Narrower sidebar */
+        padding: 10px;
+        flex: unset;
+        height: 100%;
+        overflow-y: hidden;
+        display: flex;
+        flex-direction: column;
+        border-top: none;
+        border-left: 2px solid #16364a;
+    }
+
+    #shop-items-container {
+        flex-direction: column;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 5px;
+        white-space: normal;
+        gap: 10px;
+    }
+
+    .shop-item {
+        min-width: unset;
+        width: 100%;
+        margin-bottom: 10px;
+        padding: 10px;
+    }
+
+    .shop-btn {
+        font-size: 0.8rem;
+        padding: 8px 5px;
+    }
+
+    /* Scale down game UI elements */
+    #click-target {
+        width: 140px;
+        height: 140px;
+    }
+
+    #counter-container {
+        bottom: 15px;
+        left: 15px;
+        font-size: 1.2rem;
+        padding: 5px 15px;
+    }
+
+    #currency-icon {
+        width: 30px;
+        height: 30px;
+    }
+
+    #ascended-container {
+        top: 5px;
+        left: 5px;
+        max-width: 80%;
+    }
+
+    .ascended-wrapper {
+        width: 30px;
+        height: 30px;
+    }
+
+    /* Runner Adjustments */
+    #runner-ui {
+        top: 60px;
+        /* Tighter fit */
+        left: 10px;
+        gap: 5px;
+    }
+
+    #runner-score {
+        font-size: 1.2rem;
+    }
+
+    #runner-money {
+        font-size: 1rem;
+        padding: 3px 10px;
+    }
+
+    #return-btn,
+    #runner-shop-btn,
+    #skins-btn {
+        padding: 5px 10px;
+        font-size: 0.9rem;
+    }
+
+    #runner-collection-container {
+        top: 5px;
+        left: 5px;
+    }
+
+    #runner-collection-container .ascended-wrapper {
+        width: 30px;
+        height: 30px;
     }
 }

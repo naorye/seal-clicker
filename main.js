@@ -2,6 +2,9 @@
 const MAX_SCALE = 1.2;
 const GROWTH_PER_CLICK = 0.05;
 
+// ... (Rest of file preserved until function) ...
+
+// Animal Roster
 // Animal Roster
 const ANIMALS = [
     'seal.png',
@@ -9,7 +12,14 @@ const ANIMALS = [
     'penguin.png',
     'turtle.png',
     'dolphin.png',
-    'jellyfish.png'
+    'jellyfish.png',
+    'octopus.png',
+    'crab.png',
+    'whale.png',
+    'seahorse.png',
+    'starfish.png',
+    'clownfish.png',
+    'shark.png'
 ];
 
 // Background Colors matching Animals
@@ -18,8 +28,15 @@ const ANIMAL_COLORS = [
     '#FFB6C1', // Axolotl: Pink
     '#E0FFFF', // Penguin: Light Cyan (Ice)
     '#98FB98', // Turtle: Pale Green
-    '#00BFFF', // Dolphin: Deep Sky Blue
-    '#DDA0DD'  // Jellyfish: Plum
+    '#00fff7ff', // Dolphin: Deep Sky Blue
+    '#DDA0DD', // Jellyfish: Plum
+    '#9370DB', // Octopus: Medium Purple
+    '#FF4500', // Crab: Orange Red
+    '#00008B', // Whale: Dark Blue
+    '#FFD700', // Seahorse: Gold
+    '#FF69B4', // Starfish: Hot Pink
+    '#FF8C00', // Clownfish: Dark Orange
+    '#708090'  // Shark: Slate Gray
 ];
 
 // State
@@ -39,8 +56,27 @@ let state = {
     highestStageIndex: 0, // Tracks actual progression separate from current avatar
     plusRewardClaimed: false, // One-time reward for drawing
     minusRewardClaimed: false, // One-time penalty for drawing
-    questionRewardClaimed: false // One-time reward for drawing (?)
+    questionRewardClaimed: false, // One-time reward for drawing (?)
+    purchaseCounts: {}, // Map of itemID -> count
+    firstStageCompleted: false, // Track if we've completed the first stage (to prevent re-unlocking starting animal)
+
+    // Runner Skins System
+    runnerSkins: {
+        unlockedSkins: [0], // Array of unlocked skin indices (0 = default triangle)
+        currentSkin: 0, // Currently selected skin
+        nextSkinCost: 10000 // Cost of next skin to unlock
+    },
+
+    // Runner Shop System
+    runnerShop: {
+        moneyMultiplier: 1, // How much money obstacles give
+        multiplierLevel: 0, // Current level of multiplier
+        multiplierCost: 5000 // Cost to upgrade multiplier
+    }
 };
+
+// Expose state globally for runner.js
+window.state = state;
 
 // Shop Definition
 // Shop Definition
@@ -48,32 +84,38 @@ let shopItems = [
     {
         id: 'upgrade_power_1',
         name: '+1 Click Strength',
+        baseName: 'Click Strength', // For display
+        value: 1,
         cost: 100,
         type: 'consumable',
         action: function () {
-            state.clickPower += 1;
+            state.clickPower += this.value;
             this.cost *= 2;
         }
     },
     {
         id: 'upgrade_power_2',
         name: '+2 Click Strength',
+        baseName: 'Click Strength',
+        value: 2,
         cost: 200,
         type: 'consumable',
         action: function () {
-            state.clickPower += 2;
+            state.clickPower += this.value;
             this.cost *= 2;
         }
     },
     {
         id: 'unlock_auto',
         name: 'Unlock Auto Clicker',
+        baseName: 'Auto Clicker',
+        value: 5, // Base power
         cost: 200,
         type: 'one_time',
         bought: false,
         action: function () {
             state.autoClickerActive = true;
-            state.autoClickPower = 5; // Start with base power
+            state.autoClickPower = this.value;
             this.bought = true;
             startAutoClicker();
         }
@@ -81,60 +123,72 @@ let shopItems = [
     {
         id: 'upgrade_auto_5',
         name: '+5 Auto Speed',
+        baseName: 'Auto Speed',
+        value: 5,
         cost: 300,
         type: 'consumable',
         action: function () {
-            state.autoClickPower += 5;
+            state.autoClickPower += this.value;
             this.cost *= 2;
         }
     },
     {
         id: 'upgrade_power_5',
         name: '+5 Click Strength',
+        baseName: 'Click Strength',
+        value: 5,
         cost: 500,
         type: 'consumable',
         action: function () {
-            state.clickPower += 5;
+            state.clickPower += this.value;
             this.cost *= 2;
         }
     },
     {
         id: 'upgrade_auto_10',
         name: '+10 Auto Speed',
+        baseName: 'Auto Speed',
+        value: 10,
         cost: 600,
         type: 'consumable',
         action: function () {
-            state.autoClickPower += 10;
+            state.autoClickPower += this.value;
             this.cost *= 2;
         }
     },
     {
         id: 'upgrade_power_10',
         name: '+10 Click Strength',
+        baseName: 'Click Strength',
+        value: 10,
         cost: 1000,
         type: 'consumable',
         action: function () {
-            state.clickPower += 10;
+            state.clickPower += this.value;
             this.cost *= 2;
         }
     },
     {
         id: 'upgrade_auto_25',
         name: '+25 Auto Speed',
+        baseName: 'Auto Speed',
+        value: 25,
         cost: 1500,
         type: 'consumable',
         action: function () {
-            state.autoClickPower += 25;
+            state.autoClickPower += this.value;
             this.cost *= 2;
         }
     },
     {
         id: 'upgrade_power_25',
         name: '+25 Click Strength',
+        baseName: 'Click Strength',
+        value: 25,
         cost: 2500,
         type: 'consumable',
         action: function () {
-            state.clickPower += 25;
+            state.clickPower += this.value;
             this.cost *= 2;
         }
     }
@@ -190,17 +244,38 @@ function renderShop() {
         itemDiv.className = 'shop-item';
 
         const btn = document.createElement('button');
-        btn.textContent = item.name;
         btn.className = 'shop-btn';
+
+        // Calculate count early for button text
+        if (!state.purchaseCounts) state.purchaseCounts = {};
+        const count = state.purchaseCounts[item.id] || 0;
+
+        btn.textContent = `${item.name} (${count})`; // "Name (5)"
 
         btn.onclick = () => buyItem(item);
 
         const priceDiv = document.createElement('div');
         priceDiv.className = 'shop-price';
-        priceDiv.textContent = `Cost: $${item.cost}`;
+        priceDiv.textContent = `Cost: ${item.cost}`;
+
+        // Stats Display logic remains (for detail) but simplified
+        const totalValue = count * item.value;
+
+        console.log(`Rendering Item ${item.id}: Count=${count}, Value=${item.value}, Total=${totalValue}`);
+
+        const statsDiv = document.createElement('div');
+        statsDiv.className = 'shop-stats';
+        statsDiv.style.fontSize = '0.8rem';
+        statsDiv.style.marginTop = '5px';
+        statsDiv.style.color = '#fff'; // Changed to pure white to ensure visibility
+        statsDiv.style.fontWeight = 'bold'; // Make it bolder
+
+        // Always show stats
+        statsDiv.textContent = `Bought: ${count} (Total: +${totalValue})`;
 
         itemDiv.appendChild(btn);
         itemDiv.appendChild(priceDiv);
+        itemDiv.appendChild(statsDiv); // Add stats
         shopContainer.appendChild(itemDiv);
 
         item.domElement = btn;
@@ -231,6 +306,15 @@ function buyItem(item) {
         state.clicks -= item.cost;
         item.action();
 
+        // Ensure map exists (safety)
+        if (!state.purchaseCounts) state.purchaseCounts = {};
+
+        // Track Purchase Count
+        if (!state.purchaseCounts[item.id]) {
+            state.purchaseCounts[item.id] = 0;
+        }
+        state.purchaseCounts[item.id]++;
+
         // Re-render because sorting might change (cost doubled)
         renderShop();
         updateUI();
@@ -238,6 +322,11 @@ function buyItem(item) {
 }
 
 function handleClick() {
+    // Start music on first interaction if not playing (browsers require gesture)
+    if (window.soundManager && !window.soundManager.isPlayingMusic) {
+        window.soundManager.toggleMusic(true);
+    }
+
     state.clicks += state.clickPower;
     state.totalTaps++;
 
@@ -253,11 +342,22 @@ function handleClick() {
     }
 
     updateUI();
-    checkProgression();
+    checkProgression(); // Check progression in clicker mode
 }
 
 function checkProgression() {
     if (state.clicks >= state.targetClicks && !state.hasAscended) {
+        // Special case: First time reaching target while at starting stage
+        if (!state.firstStageCompleted && state.highestStageIndex === 0) {
+            // Mark first stage as completed and update target for next unlock
+            state.firstStageCompleted = true;
+            state.currentInterval = state.currentInterval * 2;
+            state.targetClicks = state.targetClicks + state.currentInterval;
+            return; // Don't trigger ascension
+        }
+
+        // Always trigger ascension after first stage is completed
+        // This allows looping through all animals repeatedly
         triggerAscension();
     }
 }
@@ -265,13 +365,16 @@ function checkProgression() {
 function triggerAscension() {
     state.hasAscended = true; // Prevent multiple triggers
 
+    // Save the CURRENT animal index (the one going to shelf)
+    const oldAnimalIndex = state.animalIndex;
+
     // 1. Remove click listener
     clickTarget.removeEventListener('click', handleClick);
 
-    // 2. Animate to top-left
+    // 2. Animate the OLD animal to the shelf
     const currentRect = clickTarget.getBoundingClientRect();
 
-    // Clone for animation
+    // Clone the CURRENT (old) animal for animation
     const clone = clickTarget.cloneNode(true);
     document.body.appendChild(clone);
 
@@ -283,7 +386,7 @@ function triggerAscension() {
     clone.style.height = currentRect.height + 'px';
 
     clone.style.transform = `scale(1)`; // Start at normal size
-    clone.style.transition = 'all 1.0s ease-in-out'; // Smoother, no "boom" bounce
+    clone.style.transition = 'all 1.0s ease-in-out'; // Smoother
     clone.style.zIndex = 100;
 
     // Hide original
@@ -293,25 +396,35 @@ function triggerAscension() {
     // Force reflow
     clone.offsetHeight;
 
-    // Move to target
-    clone.style.top = '20px';
-    clone.style.left = '20px';
+    // Move to shelf position
+    clone.style.top = '10px';
+    clone.style.left = '10px';
 
-    clone.style.width = '60px';
-    clone.style.height = '60px';
+    clone.style.width = '40px';
+    clone.style.height = '40px';
     clone.style.transform = 'scale(1) rotate(0deg)';
 
-    // After animation, put it in the container and spawn next
+    // After animation, add OLD animal to shelf and spawn NEW animal in center
     setTimeout(() => {
         clone.remove();
-        addAscendedIcon(state.animalIndex); // Pass index instead of src
+        // Add the OLD animal to the shelf
+        addAscendedIcon(oldAnimalIndex);
+        // Spawn the NEW animal in center
         spawnNextStage();
     }, 1000);
 }
 
-function addAscendedIcon(animalIndex) {
+function addAscendedIcon(animalIndex, silent = false) {
+    // Check if this animal is already on the shelf
+    const existingIcons = ascendedContainer.querySelectorAll('.ascended-icon');
+    for (let icon of existingIcons) {
+        if (parseInt(icon.dataset.index) === animalIndex) {
+            return; // Already exists, don't add duplicate
+        }
+    }
+
     const wrapper = document.createElement('div');
-    wrapper.className = 'ascended-wrapper pop-in';
+    wrapper.className = silent ? 'ascended-wrapper' : 'ascended-wrapper pop-in';
 
     const icon = document.createElement('img');
     icon.src = ANIMALS[animalIndex];
@@ -388,7 +501,9 @@ clickTarget.src = ANIMALS[state.animalIndex];
 gameContainer.style.backgroundColor = ANIMAL_COLORS[state.animalIndex];
 clickTarget.addEventListener('click', handleClick);
 
-// Initial Shop Render
+// Don't populate shelf on initial load - animals will appear only after ascending
+// (This makes the game start with an empty collection area)
+
 // Initial Shop Render
 renderShop();
 updateUI();
@@ -745,3 +860,211 @@ function triggerPlusReward() {
     }, 1000);
 }
 
+// User Comment about forcing save (can be removed or kept as comment)
+// Forcing a re-save of main.js to ensure browser cache sees new file
+
+// --- World Flip Logic ---
+
+
+const flipBtn = document.getElementById('flip-world-btn');
+const returnBtn = document.getElementById('return-btn');
+const runnerContainer = document.getElementById('runner-container');
+const muteBtn = document.getElementById('mute-btn');
+
+let isRunnerMode = false;
+
+// Global Click Sound
+document.addEventListener('click', (e) => {
+    // Check if clicking a button (or inside one)
+    if (e.target.closest('button')) {
+        if (window.soundManager) window.soundManager.playClick();
+    }
+});
+
+// Mute Logic
+if (muteBtn) {
+    muteBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // prevent clicker trigger if necessary
+        if (window.soundManager) {
+            const isMuted = window.soundManager.toggleMute();
+            muteBtn.textContent = isMuted ? '🔇' : '🔊';
+        }
+    });
+
+    // Make sure it works inside pointer-events: none containers if needed
+    muteBtn.style.pointerEvents = 'auto';
+}
+
+flipBtn.addEventListener('click', toggleWorld);
+returnBtn.addEventListener('click', toggleWorld);
+
+function toggleWorld() {
+    isRunnerMode = !isRunnerMode;
+
+    if (isRunnerMode) {
+        document.body.classList.add('flipped');
+        runnerContainer.classList.remove('hidden'); // Enable pointer events
+
+        // Pause Clicker Interactions (disable buttons?)
+        // Styling handles visibility, but let's be safe
+
+        // Sync skin from state
+        if (window.runnerGame && state.runnerSkins) {
+            window.runnerGame.player.skinIndex = state.runnerSkins.currentSkin;
+        }
+
+        // Update money display
+        updateRunnerMoneyDisplay();
+
+        // Sync Collection
+        updateRunnerCollection();
+
+        // Start Runner
+        if (window.runnerGame) {
+            window.runnerGame.start();
+            window.runnerGame.resume();
+        }
+
+        // Switch Music to Runner Mode
+        if (window.soundManager) window.soundManager.setMode('runner');
+
+    } else {
+        document.body.classList.remove('flipped');
+        runnerContainer.classList.add('hidden'); // Disable pointer events
+
+        // Pause Runner
+        if (window.runnerGame) {
+            window.runnerGame.pause();
+        }
+
+        // Switch Music to Clicker Mode
+        if (window.soundManager) window.soundManager.setMode('clicker');
+
+        // Check progression when returning from runner (in case we earned enough while playing)
+        checkProgression();
+    }
+}
+
+// Global Money Helper for Runner
+window.addMoney = function (amount) {
+    // Apply multiplier from runner shop
+    const finalAmount = Math.floor(amount * state.runnerShop.moneyMultiplier);
+    state.clicks += finalAmount;
+    // visual feedback in runner handled by runner
+    updateUI();
+    updateRunnerMoneyDisplay();
+    // Don't trigger progression/ascension while in runner mode
+    // It will be checked when returning to clicker
+    return finalAmount; // Return actual amount added for feedback
+}
+
+// Global Money Helper for Clicker (called when clicking in clicker mode)
+window.addMoneyClicker = function (amount) {
+    state.clicks += amount;
+    updateUI();
+    checkProgression(); // Check progression immediately in clicker mode
+}
+
+// Update runner money display
+function updateRunnerMoneyDisplay() {
+    const runnerMoneyEl = document.getElementById('runner-money');
+    if (runnerMoneyEl) {
+        runnerMoneyEl.textContent = '$' + state.clicks;
+    }
+}
+
+function updateRunnerCollection() {
+    const runnerCollection = document.getElementById('runner-collection-container');
+    const originalCollection = document.getElementById('ascended-container');
+
+    if (!runnerCollection || !originalCollection) return;
+
+    runnerCollection.innerHTML = ''; // Clear
+
+    // Copy each child (icon wrapper)
+    Array.from(originalCollection.children).forEach(wrapper => {
+        const clone = wrapper.cloneNode(true);
+        // Remove 'pop-in' class if present to avoid animation re-triggering
+        clone.classList.remove('pop-in');
+
+        // Ensure pointer events are off (no swapping in runner)
+        const icon = clone.querySelector('img');
+        if (icon) {
+            icon.style.cursor = 'default';
+            icon.onclick = null; // Remove onclick handler
+        }
+
+        runnerCollection.appendChild(clone);
+    });
+
+    // Also add the CURRENT active animal from the clicker (since it's not on the main runner screen)
+    // This allows the user to see their "full progress" including the current seal they are playing as.
+    if (ANIMALS[state.animalIndex]) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'ascended-wrapper';
+
+        const icon = document.createElement('img');
+        icon.src = ANIMALS[state.animalIndex];
+        icon.className = 'ascended-icon';
+        icon.style.cursor = 'default';
+
+        wrapper.appendChild(icon);
+        runnerCollection.appendChild(wrapper);
+    }
+}
+
+// Make it globally accessible
+window.updateRunnerMoneyDisplay = updateRunnerMoneyDisplay;
+
+// Initial Load - DISABLED FOR "ROGUE-LIKE" SESSION
+// The user wants the game to reset every time they refresh (Cmd+R).
+/*
+if (localStorage.getItem('sealClickerState_v3')) {
+    try {
+        const saved = JSON.parse(localStorage.getItem('sealClickerState_v3'));
+        // Merge saved state
+        state = { ...state, ...saved };
+        
+        // Restore purchase counts
+        if (state.purchaseCounts) {
+             // Logic to restore counts visually already handled by renderShop
+        }
+    } catch (e) {
+        console.error('Save load failed', e);
+    }
+}
+*/
+
+// Auto Save - DISABLED
+/*
+setInterval(() => {
+    localStorage.setItem('sealClickerState_v3', JSON.stringify(state));
+}, 5000);
+*/
+
+// --- Error Reporting ---
+window.onerror = function (message, source, lineno, colno, error) {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.position = 'fixed';
+    errorDiv.style.top = '0';
+    errorDiv.style.left = '0';
+    errorDiv.style.width = '100%';
+    errorDiv.style.background = 'red';
+    errorDiv.style.color = 'white';
+    errorDiv.style.padding = '10px';
+    errorDiv.style.zIndex = '10000';
+    errorDiv.textContent = `JS Error: ${message} (Line ${lineno})`;
+    document.body.appendChild(errorDiv);
+};
+
+// --- Save & Load System - DISABLED ---
+// const saveData = { ... }
+// localStorage.setItem...
+
+console.log("Persistence disabled for rogue-like mode.");
+localStorage.clear();
+
+// Load on startup
+// loadGame(); // Disabled
+
+// Runner UI will be initialized by runner.js after it loads

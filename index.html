@@ -23,14 +23,33 @@
 
             <!-- Counter -->
             <div id="counter-container">
-                <div id="counter-label">$</div>
+                <img id="currency-icon" src="seal_coin.png" alt="Coins">
                 <div id="counter-value">0</div>
+                <button id="mute-btn" title="Toggle Sound">🔊</button>
                 <button id="draw-toggle-btn" title="Magic Draw Mode">✎</button>
+                <button id="flip-world-btn" title="Flip World">
+                    <img src="flip_icon.png" alt="Flip">
+                </button>
             </div>
 
             <!-- Drawing Canvas -->
             <canvas id="draw-canvas"></canvas>
         </div>
+
+        <div id="runner-container" class="hidden">
+            <div id="runner-collection-container"></div>
+            <canvas id="runner-canvas"></canvas>
+            <div id="runner-ui">
+                <button id="return-btn">Return to Clicker</button>
+                <button id="skins-btn" onclick="if(window.openSkinsModal) window.openSkinsModal();">Skins</button>
+                <button id="runner-shop-btn"
+                    onclick="if(window.openRunnerShopModal) window.openRunnerShopModal();">Shop</button>
+                <div id="runner-money">$0</div>
+                <div id="runner-score">Run! Dodge!</div>
+            </div>
+        </div>
+
+
 
         <!-- Shop Sidebar -->
         <div id="shop-container">
@@ -40,7 +59,27 @@
             </div>
         </div>
     </div>
-    <script src="main.js"></script>
+
+    <!-- Skins Selection Modal -->
+    <div id="skins-modal" class="hidden">
+        <div id="skins-modal-content">
+            <h2>Runner Skins</h2>
+            <div id="skins-grid"></div>
+            <button id="close-skins-btn">Close</button>
+        </div>
+    </div>
+
+    <!-- Runner Shop Modal -->
+    <div id="runner-shop-modal" class="hidden">
+        <div id="runner-shop-modal-content">
+            <h2>Runner Shop</h2>
+            <div id="runner-shop-items"></div>
+            <button id="close-runner-shop-btn">Close</button>
+        </div>
+    </div>
+    <script src="sound.js?v=2"></script>
+    <script src="main.js?v=4"></script>
+    <script src="runner.js?v=4"></script>
 </body>
 
 </html>
